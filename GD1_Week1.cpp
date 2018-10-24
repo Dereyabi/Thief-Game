@@ -11,7 +11,7 @@ int arrayCycle(int& currentCheckpoint);
 
 //constants
 const int kNumDummies = 5;
-const int kNumSquares = 6;
+const int kNumTiles = 6;
 
 //KeyCodes
 EKeyCode kForwardKey = Key_W;
@@ -37,11 +37,11 @@ struct Dummy
 	float dummyZ;
 };
 
-struct Square
+struct Tile
 {
-	float squareX;
-	float squareY;
-	float squareZ;
+	float tileX;
+	float tileY;
+	float tileZ;
 };
 
 
@@ -54,7 +54,7 @@ gameState currentGameState = Alive;
 
 //array initialisation
 Dummy dummies[kNumDummies];
-Square squares[kNumSquares];
+Tile objTile[kNumTiles];
 
 
 void main()
@@ -67,9 +67,48 @@ void main()
 	myEngine->AddMediaFolder( "./Media" );
 
 	/**** Set up your scene here ****/
+
+	//variables
+	int currentCheckpoint = 0;					//checkpoint cycles through dummies, guard goes to current checkpoint when patrolling 
+	float forwardSpeed = 0.005f;				//speed forwards the thief is moving at 
+	float backSpeed = 0.0025f;					//speed backwards the thief is moving at 
+	float crouchingSpeed = 0.002f;				//speed forwards when in crouched, walking or running state
+	float walkingSpeed = 0.005f;				
+	float runningSpeed = 0.008f;				
+	float backMovementMultiplier = 2.0f;		//forward speed divided by this to get back speed 
+	float turnSpeed = 0.05f;					//speed of thief turning
+	float guardSpeed = 0.002;					//forward speed of guard 
+	float guardX;								//guard X,Y and Z location
+	float guardY;
+	float guardZ;
+	float guardDetectionRange = 8.0f;			//units between guard and thief that will trigger the alert state
+	float thiefEscapeRange = 12.0f;				//units between guard and thief to trigger the idle state
+	float guardKillRange = 3.0f;				//range between the thief and guard to be able to kill the guard
+	float thiefKillRange = 1.0f;				//range between the guard and thief to be able to kill the thief 
+
+	//object position variables
+	float cameraStartingX = 0.0f;				//starting positions of camera
+	float cameraStartingY = 3.0f;
+	float cameraStartingZ = -10.0f;
+	float guardStartingX = 0.0f;				//starting positions of guard
+	float guardStartingY = 0.0f;
+	float guardStartingZ = 0.0f;
+	float thiefStartingX = 0.0f;				//starting positions of thief
+	float thiefStartingY = 0.0f;
+	float thiefStartingZ = -50.0f;
+	float guardStateStartingX = 0.0f;			//starting positions of guard state
+	float guardStateStartingY = 5.0f;
+	float guardStateStartingZ = 0.0f;
+
+	//guard state skin variables
+	string idleSkin = "blue.png";
+	string alertSkin = "red.png";
+	string deadSkin = "purple.png";
+
+
 	//Camera
 	ICamera* myCamera;
-	myCamera = myEngine->CreateCamera(kManual, 0.0f, 3.0f, -10.0f);
+	myCamera = myEngine->CreateCamera(kManual, cameraStartingX, cameraStartingY, cameraStartingZ);
 
 	//Objects
 	//Meshes
@@ -77,22 +116,22 @@ void main()
 	IMesh* thiefMesh = myEngine->LoadMesh("sierra.x");
 	IMesh* guardStateMesh = myEngine->LoadMesh("state.x");
 	IMesh* dummyMesh = myEngine->LoadMesh("Dummy.x");
-	IMesh* squareMesh = myEngine->LoadMesh("Square.x");
+	IMesh* tileMesh = myEngine->LoadMesh("Square.x");
 
 	//Models
 	IModel* guard;
 	IModel* thief;
 	IModel* guardStateModel;
 	IModel* dummy[kNumDummies];
-	IModel* square[kNumSquares];
+	IModel* tile[kNumTiles];
 
 	//Model Locations
-	guard = guardMesh->CreateModel(0, 0, 0);
-	thief = thiefMesh->CreateModel(0, 0, -50);
-	guardStateModel = guardStateMesh->CreateModel(0, 5, 0);
+	guard = guardMesh->CreateModel(guardStartingX, guardStartingY, guardStartingZ);
+	thief = thiefMesh->CreateModel(thiefStartingX, thiefStartingY, thiefStartingZ);
+	guardStateModel = guardStateMesh->CreateModel(guardStateStartingX, guardStateStartingY, guardStateStartingZ);
 
 	//Skins
-	guardStateModel->SetSkin("blue.png");
+	guardStateModel->SetSkin(idleSkin);
 
 	//Dummies
 	//positions of all dummies
@@ -108,19 +147,19 @@ void main()
 		dummy[i] = dummyMesh->CreateModel(dummies[i].dummyX, dummies[i].dummyY, dummies[i].dummyZ);
 	}
 
-	//Squares
-	//positions of squares
-	squares[0] = { 10.0f, 0.0f, 30.0f };
-	squares[1] = { -30.0f, 0.0f, 0.0f };
-	squares[2] = { -15.0f, 0.0f, -50.0f };
-	squares[3] = { 35.0f, 0.0f, -50.0f };
-	squares[4] = { 50.0f, 0.0f, -50.0f };
-	squares[5] = { 0.0f, 0.0f, 0.0f };
+	//Tiles
+	//positions of tiles
+	objTile[0] = { 10.0f, 0.0f, 30.0f };
+	objTile[1] = { -30.0f, 0.0f, 0.0f };
+	objTile[2] = { -15.0f, 0.0f, -50.0f };
+	objTile[3] = { 35.0f, 0.0f, -50.0f };
+	objTile[4] = { 50.0f, 0.0f, -50.0f };
+	objTile[5] = { 0.0f, 0.0f, 0.0f };
 
-	//creation of all squares
-	for (int i = 0; i < kNumSquares; i++)
+	//creation of all tiles
+	for (int i = 0; i < kNumTiles; i++)
 	{
-		square[i] = squareMesh->CreateModel(squares[i].squareX, squares[i].squareY, squares[i].squareZ);
+		tile[i] = tileMesh->CreateModel(objTile[i].tileX, objTile[i].tileY, objTile[i].tileZ);
 	}
 
 
@@ -129,15 +168,7 @@ void main()
 	//myCamera->AttachToParent(guard);
 	guardStateModel->AttachToParent(guard);
 
-	//variables
-	int currentCheckpoint = 0;
-	float forwardSpeed = 0.005f;
-	float backSpeed = 0.0025f;
-	float turnSpeed = 0.05f;
-	float guardSpeed = 0.002;
-	float guardX;
-	float guardY;
-	float guardZ;
+
 
 
 
@@ -207,20 +238,20 @@ void main()
 			{
 			case Crouching:
 			{
-				forwardSpeed = 0.002;
-				backSpeed = 0.001;
+				forwardSpeed = crouchingSpeed;
+				backSpeed = crouchingSpeed/backMovementMultiplier;
 				break;
 			}
 			case Walking:
 			{
-				forwardSpeed = 0.005;
-				backSpeed = 0.0025;
+				forwardSpeed = walkingSpeed;
+				backSpeed = walkingSpeed/backMovementMultiplier;
 				break;
 			}
 			case Running:
 			{
-				forwardSpeed = 0.008;
-				backSpeed = 0.004;
+				forwardSpeed = runningSpeed;
+				backSpeed = runningSpeed/backMovementMultiplier;
 				break;
 			}
 			}
@@ -233,9 +264,9 @@ void main()
 			case Idle:
 			{
 
-				guardStateModel->SetSkin("blue.png");
+				guardStateModel->SetSkin(idleSkin);
 
-				if (dotProduct > 0 && distanceCheck < 8.0f)
+				if (dotProduct > 0 && distanceCheck < guardDetectionRange)
 				{
 					currentGuardState = Alert;
 				}
@@ -244,7 +275,7 @@ void main()
 					currentGuardState = Idle;
 				}
 
-				if (distanceCheck < 3.0f && myEngine->KeyHit(kKillKey))
+				if (distanceCheck < guardKillRange && myEngine->KeyHit(kKillKey))
 				{
 					currentGuardState = gDead;
 				}
@@ -254,13 +285,13 @@ void main()
 					arrayCycle(currentCheckpoint);
 				}
 
-				for (int i = 0; i < kNumSquares; i++)
+				for (int i = 0; i < kNumTiles; i++)
 				{
-					if (box2point(currentThiefState == Walking && distanceCheck < 8.0f && square[i]->GetX(), square[i]->GetZ(), thief->GetX(), thief->GetZ(), 1.0f , 1.0f ))
+					if (box2point(currentThiefState == Walking && distanceCheck < guardDetectionRange && tile[i]->GetX(), tile[i]->GetZ(), thief->GetX(), thief->GetZ(), 1.0f , 1.0f ))
 					{
 						currentGuardState = Alert;
 					}
-					else if (currentThiefState == Running && distanceCheck < 12.0f && box2point(square[i]->GetX(), square[i]->GetZ(), thief->GetX(), thief->GetZ(), 1.0f, 1.0f))
+					else if (currentThiefState == Running && distanceCheck < thiefEscapeRange && box2point(tile[i]->GetX(), tile[i]->GetZ(), thief->GetX(), thief->GetZ(), 1.0f, 1.0f))
 					{
 						currentGuardState = Alert;
 					}
@@ -278,11 +309,11 @@ void main()
 				guard->LookAt(thief);
 				guard->MoveLocalZ(guardSpeed);
 
-				/*if (distanceCheck > 12.0f)
+				/*if (distanceCheck > thiefEscapeRange)
 				{
 					currentGuardState = Idle;
 				}*/
-				if (distanceCheck < 1.0f)
+				if (distanceCheck < thiefKillRange)
 				{
 					currentGuardState = gDead;
 					currentGameState = Dead;
@@ -292,7 +323,7 @@ void main()
 			}
 			case gDead:
 			{
-				guardStateModel->SetSkin("purple.png");
+				guardStateModel->SetSkin(deadSkin);
 
 
 				break;
@@ -305,7 +336,7 @@ void main()
 		case Dead:
 		{
 			thief->RotateLocalY(0.5);
-			guardStateModel->SetSkin("purple.png");
+			guardStateModel->SetSkin(deadSkin);
 
 			break;
 		}
