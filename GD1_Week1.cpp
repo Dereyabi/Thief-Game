@@ -287,7 +287,7 @@ void main()
 
 				for (int i = 0; i < kNumTiles; i++)
 				{
-					if (box2point(currentThiefState == Walking && distanceCheck < guardDetectionRange && tile[i]->GetX(), tile[i]->GetZ(), thief->GetX(), thief->GetZ(), 1.0f , 1.0f ))
+					if (currentThiefState == Walking && distanceCheck < guardDetectionRange && box2point(tile[i]->GetX(), tile[i]->GetZ(), thief->GetX(), thief->GetZ(), 1.0f , 1.0f ))
 					{
 						currentGuardState = Alert;
 					}
