@@ -225,13 +225,12 @@ void main()
 
 
 			//facing vector of guard
-			guardX = guard->GetX();
+			guardX = guard->GetX();																
 			guardY = guard->GetY();
 			guardZ = guard->GetZ();
-			facingVector(guard, guardX, guardY, guardZ);
+			facingVector(guard, guardX, guardY, guardZ);											//updates guard x,y and z after the function
 
-			float dotProduct = ((xDistCheck*guardX) + (zDistCheck*guardZ));
-
+			float dotProduct = ((xDistCheck*guardX) + (zDistCheck*guardZ));							//guard x and z are facing vector of guard, dist check is vector between guard and thief 
 
 			//start of switch
 			switch (currentThiefState)
@@ -309,10 +308,10 @@ void main()
 				guard->LookAt(thief);
 				guard->MoveLocalZ(guardSpeed);
 
-				/*if (distanceCheck > thiefEscapeRange)
+				if (distanceCheck > thiefEscapeRange)
 				{
 					currentGuardState = Idle;
-				}*/
+				}
 				if (distanceCheck < thiefKillRange)
 				{
 					currentGuardState = gDead;
