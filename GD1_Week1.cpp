@@ -85,6 +85,9 @@ void main()
 	float thiefEscapeRange = 12.0f;				//units between guard and thief to trigger the idle state
 	float guardKillRange = 3.0f;				//range between the thief and guard to be able to kill the guard
 	float thiefKillRange = 1.0f;				//range between the guard and thief to be able to kill the thief 
+	float checkpointRadius = 1.0f;				//used in collision detection for guard patrol
+	float tileWidth = 1.0f;						//used in collision detection with tiles for noise
+	float tileLength = 1.0f;					
 
 	//object position variables
 	float cameraStartingX = 0.0f;				//starting positions of camera
@@ -217,10 +220,10 @@ void main()
 				currentThiefState = Running;
 			}
 
-			//Distance from guard to thief, can he see the thief? length of vector
-			float xDistCheck = thief->GetX() - guard->GetX();
-			float zDistCheck = thief->GetZ() - guard->GetZ();
-			float distanceCheck = sqrt((xDistCheck*xDistCheck) + (zDistCheck*zDistCheck));
+			//vector between the guard and the thief
+			float xDistCheck = thief->GetX() - guard->GetX();										
+			float zDistCheck = thief->GetZ() - guard->GetZ();										
+			float distanceCheck = sqrt((xDistCheck*xDistCheck) + (zDistCheck*zDistCheck));			
 
 
 
@@ -279,18 +282,20 @@ void main()
 					currentGuardState = gDead;
 				}
 
-				if (sphere2sphere(guard->GetX(), guard->GetZ(), dummy[currentCheckpoint]->GetX(), dummy[currentCheckpoint]->GetZ(), 1))
+				//guard patrol route, cycles through dummies when it detects collisions with them
+				if (sphere2sphere(guard->GetX(), guard->GetZ(), dummy[currentCheckpoint]->GetX(), dummy[currentCheckpoint]->GetZ(), checkpointRadius))
 				{
 					arrayCycle(currentCheckpoint);
 				}
 
+				//checks whether a tile has been stepped on and what state the thief is in to determine the range the guard would hear
 				for (int i = 0; i < kNumTiles; i++)
 				{
-					if (currentThiefState == Walking && distanceCheck < guardDetectionRange && box2point(tile[i]->GetX(), tile[i]->GetZ(), thief->GetX(), thief->GetZ(), 1.0f , 1.0f ))
+					if (currentThiefState == Walking && distanceCheck < guardDetectionRange && box2point(tile[i]->GetX(), tile[i]->GetZ(), thief->GetX(), thief->GetZ(), tileWidth , tileLength))
 					{
 						currentGuardState = Alert;
 					}
-					else if (currentThiefState == Running && distanceCheck < thiefEscapeRange && box2point(tile[i]->GetX(), tile[i]->GetZ(), thief->GetX(), thief->GetZ(), 1.0f, 1.0f))
+					else if (currentThiefState == Running && distanceCheck < thiefEscapeRange && box2point(tile[i]->GetX(), tile[i]->GetZ(), thief->GetX(), thief->GetZ(), tileWidth, tileLength))
 					{
 						currentGuardState = Alert;
 					}
@@ -334,7 +339,8 @@ void main()
 		//end of alive state
 		case Dead:
 		{
-			thief->RotateLocalY(0.5);
+			//temporary to show that the thief has been caught
+			thief->RotateLocalY(0.5);							
 			guardStateModel->SetSkin(deadSkin);
 
 			break;
@@ -351,7 +357,7 @@ void main()
 	myEngine->Delete();
 }
 
-void facingVector(IModel *guard, float &x, float &y, float &z)
+void facingVector(IModel *guard, float &x, float &y, float &z)						//used to update x,y and z 
 {
 	float guardMatrix[16];
 
@@ -362,14 +368,14 @@ void facingVector(IModel *guard, float &x, float &y, float &z)
 	z = guardMatrix[10];
 }
 
-int arrayCycle(int& currentCheckpoint)
+int arrayCycle(int& currentCheckpoint)									//used to have guard go to next checkpoint when a collision has ben detected
 {
 	currentCheckpoint = (currentCheckpoint + 1) % kNumDummies;
 
 	return currentCheckpoint;
 }
 
-bool sphere2sphere(float guardXPos, float guardZPos, float checkpointXPos, float checkpointZPos, float checkpointRad)
+bool sphere2sphere(float guardXPos, float guardZPos, float checkpointXPos, float checkpointZPos, float checkpointRad)			//used to decect whether a guard has hit a checkpoint
 {
 	float distX = checkpointXPos - guardXPos;
 	float distZ = checkpointZPos - guardZPos;
@@ -378,7 +384,7 @@ bool sphere2sphere(float guardXPos, float guardZPos, float checkpointXPos, float
 	return(distance < (checkpointRad));
 }
 
-bool box2point(float tileXPos, float tileZPos, float thiefXPos, float thiefZPos, float tileWidth, float tileLength)
+bool box2point(float tileXPos, float tileZPos, float thiefXPos, float thiefZPos, float tileWidth, float tileLength)				//used to detect whether the thief has hit a tile
 {
 	float distX = tileXPos - thiefXPos;
 	float distZ = tileZPos - thiefZPos;
