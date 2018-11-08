@@ -1,6 +1,8 @@
 // GD1_Week1.cpp: A program using the TL-Engine
 
 #include <TL-Engine.h>	// TL-Engine include file and namespace
+#include "CVector3cut.h"
+#include "CMatrix4x4cut.h"
 using namespace tle;
 
 
